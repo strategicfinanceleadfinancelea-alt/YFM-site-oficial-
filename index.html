@@ -1021,18 +1021,28 @@ footer .inner{padding:80px 0 40px}
     btn.disabled=true;btn.style.opacity='.7';btn.lastChild.textContent=' Enviando...';
     var ctl=window.AbortController?new AbortController():null,
         tm=setTimeout(function(){if(ctl)ctl.abort();},12000);
-    var fd=new FormData();
-    fd.append('_subject','Novo contato pelo site YFM Finance');fd.append('_template','table');fd.append('_captcha','false');fd.append('_honey','');
-    fd.append('Nome',d.get('nome'));fd.append('email',d.get('email'));fd.append('Negocio',d.get('neg')||'-');fd.append('Assunto',d.get('ass'));fd.append('Mensagem',d.get('msg')||'-');
-    fetch('https://formsubmit.co/ajax/'+mail,{
-      method:'POST',
-      headers:{'Accept':'application/json'},
-      body:fd,
-      signal:ctl?ctl.signal:undefined
-    }).then(function(r){return r.json();}).then(function(j){
+    var SB='https://gytyqhpkakgbnqljxktj.supabase.co',
+        KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd5dHlxaHBrYWtnYm5xbGp4a3RqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIyNzIyNTQsImV4cCI6MjEwNzg0ODI1NH0.nDew9SJx59mOrJ-pqholYk74RrwGZ7UoeLlgzWbg2js';
+    function viaBanco(){
+      return fetch(SB+'/rest/v1/contatos',{
+        method:'POST',
+        headers:{'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+        body:JSON.stringify({nome:d.get('nome'),email:d.get('email'),negocio:d.get('neg')||null,assunto:d.get('ass'),mensagem:d.get('msg')||null}),
+        signal:ctl?ctl.signal:undefined
+      }).then(function(r){return r.ok;}).catch(function(){return false;});
+    }
+    function viaEmail(){
+      var fd=new FormData();
+      fd.append('_subject','Novo contato pelo site YFM Finance');fd.append('_template','table');fd.append('_captcha','false');fd.append('_honey','');
+      fd.append('Nome',d.get('nome'));fd.append('email',d.get('email'));fd.append('Negocio',d.get('neg')||'-');fd.append('Assunto',d.get('ass'));fd.append('Mensagem',d.get('msg')||'-');
+      return fetch('https://formsubmit.co/ajax/'+mail,{
+        method:'POST',headers:{'Accept':'application/json'},body:fd,signal:ctl?ctl.signal:undefined
+      }).then(function(r){return r.json();}).then(function(j){return !!(j&&(j.success===true||j.success==='true'));}).catch(function(){return false;});
+    }
+    Promise.all([viaBanco(),viaEmail()]).then(function(r){
       clearTimeout(tm);
-      if(j&&(j.success===true||j.success==='true'))showSent(d.get('email'));else showFallback(body);
-    }).catch(function(err){clearTimeout(tm);try{console.error('envio',err&&err.message)}catch(x){}showFallback(body);});
+      if(r[0]||r[1])showSent(d.get('email'));else showFallback(body);
+    });
   });
 })();
 </script>
